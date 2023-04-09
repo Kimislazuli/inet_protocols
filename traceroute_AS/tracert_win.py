@@ -39,7 +39,7 @@ def process_output_line(line: str) -> str:
     """
     Processing tracert output line to result table line with extraction of IP and checks for missmatch/grey IP.
 
-    :param line: decoded line from $tracert
+    :param line: decoded line from $tracert [destination]
     :return: processed row for the results table
     """
     # check is unreachable
