@@ -78,12 +78,6 @@ def process_output_line(line: str) -> list:
     # extract IP address
     router_ip = re.findall(IP, line)
 
-    # check is IP address grey
-    for regex in GREY_NETWORKS_RANGE:
-        temp_match = re.findall(regex, line)
-        if temp_match:
-            return f'IP: {router_ip[0]}, grey IP address'
-
     # check IP in line
     if router_ip:
         return f'IP: {router_ip[0]}'
