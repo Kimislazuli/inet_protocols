@@ -54,8 +54,10 @@ def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
 
     # parse json
     url = 'https://api.incolumitas.com/?q=' + ip_address
-    data_from_link = urlopen(url)
-    data_from_json = json.load(data_from_link)
+
+    with urlopen(url) as handle:
+        data_from_json = json.load(handle)
+
     return [
         ip_address,
         data_from_json['asn']['asn'],
