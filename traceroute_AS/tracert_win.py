@@ -35,7 +35,32 @@ class Args:
         return args.destination
 
 
-def process_output_line(line: str) -> str:
+def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
+    """
+    Check if ip grey and parse info about it if not.
+
+    :param ip_address: address to check info
+    :return: parsing results
+    """
+    # check is IP address grey
+    for regex in GREY_NETWORKS_RANGE:
+        temp_match = re.match(regex, ip_address)
+        if temp_match:
+            return [ip_address, 'grey ip address', '', '']
+
+    # parse json
+    url = 'https://api.incolumitas.com/?q=' + ip_address
+    data_from_link = urlopen(url)
+    data_from_json = json.load(data_from_link)
+    return [
+        ip_address,
+        data_from_json['asn']['asn'],
+        data_from_json['location']['country'],
+        data_from_json['location']['city']
+    ]
+
+
+def process_output_line(line: str) -> list:
     """
     Processing tracert output line to result table line with extraction of IP and checks for missmatch/grey IP.
 
