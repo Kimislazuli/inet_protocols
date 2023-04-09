@@ -80,21 +80,34 @@ def process_output_line(line: str) -> list:
 
     # check IP in line
     if router_ip:
-        return f'IP: {router_ip[0]}'
+        return parse_info_by_ip(router_ip[0])
 
-    return ''
+    return []
 
 
-def traceroute(dest):
-    # tracert call
-    output = check_output(['tracert', dest]).splitlines()
-    for line in output:
-        print(process_output_line(line.decode('CP866')))
+def make_table(data: list) -> PrettyTable:
+    """
+    Create table with results of tracert and country + city validation.
+
+    :param data: parsed tracert lines
+    :return: table with results
+    """
+
+    traceroute_table = PrettyTable()
+    traceroute_table.field_names = ['IP', 'ASN', 'Country', 'City']
+
+    for line in data:
+        processing_result = process_output_line(line.decode('CP866'))
+        if len(processing_result):
+            traceroute_table.add_row(processing_result)
+
+    return traceroute_table
 
 
 def main():
     args = Args()
-    traceroute(args.destination)
+    output = check_output(['tracert', args.destination]).splitlines()
+    print(make_table(output))
 
 
 if __name__ == '__main__':
