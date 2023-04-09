@@ -1,10 +1,14 @@
 """
 Windows script to parse traceroute and check AS for every router.
 """
-
+import json
 import re
+import sys
 from subprocess import check_output
 from argparse import ArgumentParser
+from urllib.request import urlopen
+
+from prettytable import PrettyTable
 
 MISSMATCH = r'\* {8}\* {8}\*'
 IP = r'\d{1,3}\.\d{1,3}.\d{1,3}\.\d{1,3}'
