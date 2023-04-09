@@ -66,7 +66,7 @@ def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
 
 def process_output_line(line: str) -> list:
     """
-    Processing tracert output line to result table line with extraction of IP and checks for missmatch/grey IP.
+    Processing tracert output line to result table line with extraction of IP and check for missmatch.
 
     :param line: decoded line from $tracert [destination]
     :return: processed row for the results table
