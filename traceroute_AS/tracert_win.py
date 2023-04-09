@@ -44,7 +44,7 @@ def process_output_line(line: str) -> str:
     """
     # check is unreachable
     if re.findall(MISSMATCH, line):
-        return '***'
+        sys.exit(0)
 
     # extract IP address
     router_ip = re.findall(IP, line)
