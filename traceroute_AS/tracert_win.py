@@ -11,7 +11,7 @@ from urllib.request import urlopen
 from prettytable import PrettyTable
 
 MISSMATCH = r'\* {8}\* {8}\*'
-IP = r'\d{1,3}\.\d{1,3}.\d{1,3}\.\d{1,3}'
+IP = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
 GREY_NETWORKS_RANGE = [
     r'172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}',
     r'10\.\d{1,3}\.\d{1,3}\.\d{1,3}',
