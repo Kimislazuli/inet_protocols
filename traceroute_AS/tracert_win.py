@@ -17,6 +17,7 @@ GREY_NETWORKS_RANGE = [
     r'192\.168\.\d{1,3}\.\d{1,3}',
     r'127\.\d{1,3}\.\d{1,3}\.\d{1,3}',
 ]
+ARIN_AS = r'<originAS>AS(\d{5})</originAS>'
 
 
 class Args:
@@ -61,8 +62,9 @@ def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
 
     if isinstance(asn, dict):
         asn = asn['asn']
-    elif asn is None:
-        asn = ''
+    elif asn is None and data_from_json['rir'] == 'ARIN':
+        with urlopen('https://whois.arin.net/rest/net/NET-52-84-0-0-1/pft?s=' + ip_address) as handle:
+            asn = re.findall(ARIN_AS, handle.read().decode('CP866'))[0]
 
     country = data_from_json['location']['country']
     city = data_from_json['location']['city']
@@ -79,7 +81,7 @@ def process_output_line(line: str) -> list:
     """
     Processing tracert output line to result table line with extraction of IP and check for missmatch.
 
-    :param line: decoded line from $tracert [destination]
+    :param line: decoded line from $ tracert [destination]
     :return: processed row for the results table
     """
 
