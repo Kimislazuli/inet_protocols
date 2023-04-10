@@ -3,7 +3,6 @@ Windows script to parse traceroute and check AS for every router.
 """
 import json
 import re
-import sys
 from subprocess import check_output
 from argparse import ArgumentParser
 from urllib.request import urlopen
@@ -18,6 +17,7 @@ GREY_NETWORKS_RANGE = [
     r'192\.168\.\d{1,3}\.\d{1,3}',
     r'127\.\d{1,3}\.\d{1,3}\.\d{1,3}',
 ]
+ARIN_AS = r'<originAS>AS(\d{5})</originAS>'
 
 
 class Args:
@@ -58,11 +58,22 @@ def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
     with urlopen(url) as handle:
         data_from_json = json.load(handle)
 
+    asn = data_from_json['asn']
+
+    if isinstance(asn, dict):
+        asn = asn['asn']
+    elif asn is None and data_from_json['rir'] == 'ARIN':
+        with urlopen('https://whois.arin.net/rest/net/NET-52-84-0-0-1/pft?s=' + ip_address) as handle:
+            asn = re.findall(ARIN_AS, handle.read().decode('CP866'))[0]
+
+    country = data_from_json['location']['country']
+    city = data_from_json['location']['city']
+
     return [
         ip_address,
-        data_from_json['asn']['asn'],
-        data_from_json['location']['country'],
-        data_from_json['location']['city']
+        asn,
+        country,
+        city
     ]
 
 
@@ -70,12 +81,13 @@ def process_output_line(line: str) -> list:
     """
     Processing tracert output line to result table line with extraction of IP and check for missmatch.
 
-    :param line: decoded line from $tracert [destination]
+    :param line: decoded line from $ tracert [destination]
     :return: processed row for the results table
     """
+
     # check is unreachable
     if re.findall(MISSMATCH, line):
-        sys.exit(0)
+        return ['*']
 
     # extract IP address
     router_ip = re.findall(IP, line)
@@ -87,7 +99,7 @@ def process_output_line(line: str) -> list:
     return []
 
 
-def make_table(data: list) -> PrettyTable:
+def create_table(data: list) -> PrettyTable:
     """
     Create table with results of tracert and country + city validation.
 
@@ -100,7 +112,9 @@ def make_table(data: list) -> PrettyTable:
 
     for line in data:
         processing_result = process_output_line(line.decode('CP866'))
-        if len(processing_result):
+        if len(processing_result) == 1:
+            break
+        elif len(processing_result) > 1:
             traceroute_table.add_row(processing_result)
 
     return traceroute_table
@@ -109,7 +123,7 @@ def make_table(data: list) -> PrettyTable:
 def main():
     args = Args()
     output = check_output(['tracert', args.destination]).splitlines()
-    print(make_table(output))
+    print(create_table(output))
 
 
 if __name__ == '__main__':
