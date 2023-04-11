@@ -122,7 +122,7 @@ def create_table(data: list) -> PrettyTable:
 
 def main():
     args = Args()
-    output = check_output(['tracert', args.destination]).splitlines()
+    output = check_output(['traceroute', args.destination]).splitlines()
     print(create_table(output))
 
 
