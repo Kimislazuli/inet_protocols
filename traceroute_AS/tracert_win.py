@@ -62,7 +62,7 @@ def parse_info_by_ip(ip_address: str) -> list[str, str, str, str]:
 
     if isinstance(asn, dict):
         asn = asn['asn']
-    elif asn is None and data_from_json['rir'] == 'ARIN':
+    elif asn is None:
         with urlopen('https://whois.arin.net/rest/net/NET-52-84-0-0-1/pft?s=' + ip_address) as handle:
             asn = re.findall(ARIN_AS, handle.read().decode('CP866'))[0]
 
