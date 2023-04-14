@@ -1,5 +1,5 @@
 """
-Windows script to parse traceroute and check AS for every router.
+Unix script to parse traceroute and check AS for every router.
 """
 import json
 import re
