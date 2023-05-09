@@ -1,94 +1,111 @@
 from socket import AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR
 from socket import socket
+from collections import defaultdict
+from typing import Optional
+import time
+import pickle
+import os
+
 from dnslib import DNSRecord, RCODE
 
-ROOT_SERVER = "77.88.8.1"
+ROOT_SERVER = '77.88.8.1'  # yandex
 
 
-def parse_transaction_id(transaction_id):
-    result = ''
-    for byte in transaction_id:
-        result += hex(byte)[2:]
+class Server:
+    def __init__(self):
+        self.cache = self.initialize_cache()
 
-    return result
+    @staticmethod
+    def initialize_cache() -> dict:
+        try:
+            with open('.server.pickle', 'rb') as handle:
+                data = pickle.load(handle)
+                for key, (records, expiration_time) in list(data.items()):
+                    if time.time() >= expiration_time:
+                        del data[key]
 
-def build_flags(flags):
-    QR = '1'
-    OPCODE = ''
+            os.remove('.server.pickle')
 
-    first_byte_of_flags = flags[:1]
+            return data
 
-    for bit in range(1, 5):
-        bit_mask = (1 << bit)
-        OPCODE += str(ord(first_byte_of_flags) & bit_mask)
+        except FileNotFoundError:
+            return dict()
 
-    AA = '1'
-    TC = '0'
-    RD = '0'
-    RA = '0'
-    Z = '000'
-    RCODE = '0000'
+    def save_cache(self):
+        with open('.server.pickle', 'wb') as handle:
+            pickle.dump(self.cache, handle)
 
-    first_byte_result = int(QR + OPCODE + AA + TC + RD, 2)
-    second_byte_result = int(RA + Z + RCODE, 2)
-    return first_byte_result.to_bytes(1, byteorder='big') + second_byte_result.to_bytes(1, byteorder='big')
+    def add_record_to_cache(self, key: tuple, records: list, ttl: int):
+        expiration_time = time.time() + ttl
+        self.cache[key] = (records, expiration_time)
 
+    def get_records_from_cache(self, query: DNSRecord) -> Optional[list]:
+        key = (query.q.qtype, query.q.qname)
+        records_data = self.cache.get(key)
 
-def identify_query_type(query_type):
-    if query_type == b'\x00\x01':
-        return 'A'
+        if records_data:
+            records, expiration_time = records_data
+            if time.time() < expiration_time:
+                return records
+            del self.cache[key]
 
+        return None
 
-def parse_query(query):
-    part_len = 0
-    part_pointer = 0
-    general_query_pointer = 0
-    part = ''
-    domain_name = []
-    build_part = False
-    for byte in query:
-        if not build_part:
-            part_len = byte
-            build_part = True
-            continue
+    def save_response_to_cache(self, response_record: DNSRecord):
+        records = defaultdict(list)
 
-        part += chr(byte)
-        part_pointer += 1
-        general_query_pointer += 1
-        if part_pointer == part_len:
-            part_pointer = 0
-            domain_name.append(part)
-            build_part = False
-            part = ''
-        if byte == 0:
-            # domain_name.append(part)
-            break
+        for rr_section in (response_record.rr, response_record.auth, response_record.ar):
+            for rr in rr_section:
+                records[(rr.rtype, rr.rname)].append(rr)
+                print(f'Record from cache: \n{rr}', end='\n\n')
+                self.add_record_to_cache((rr.rtype, rr.rname), records[(rr.rtype, rr.rname)], rr.ttl)
 
-    type_of_request = identify_query_type(query[general_query_pointer + 1: general_query_pointer + 3])
+    @staticmethod
+    def make_response_from_cache(query: DNSRecord, data: bytes) -> DNSRecord:
+        response = DNSRecord(header=query.header)
+        response.add_question(query.q)
+        response.rr += data
+        print(f'This rr\'s from cache:\n{response}', end='\n\n')
+        return response.pack()
 
-    return domain_name, type_of_request
+    def parse_query(self, query_data: bytes) -> DNSRecord:
+        query = DNSRecord.parse(query_data)
+        if extracted_from_cache := self.get_records_from_cache(query):
+            return self.make_response_from_cache(query, extracted_from_cache)
 
+        print('No information in cache. I\'ll try ask.')
 
-def create_response(recieved_data):
-    # now make header
-    transaction_id = parse_transaction_id(recieved_data[0:2])  # parse transaction id from request
-    flags = build_flags(recieved_data[2:4])  # parse flags + change some
-    QDCOUNT = b'\x00\x01'
+        response = query.send(ROOT_SERVER, 53, timeout=5)
+        response_record = DNSRecord.parse(response)
 
-    # and then query
-    domain_name, type_of_request = parse_query(recieved_data[12:])
+        print(f'Authorative response drom root server: {response_record}', end='\n\n')
+
+        if response_record.header.rcode == RCODE.NOERROR:  # save to cache if no error
+            self.save_response_to_cache(response_record)
+
+        return response
 
 
 def main():
-    server_socket = socket(AF_INET, SOCK_DGRAM)  # IPv4 UDP socket
-    server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 'clean' every time
-    server_socket.bind(('127.0.0.1', 5353))
-    print('server is up')
-    while True:
-        data, addr = server_socket.recvfrom(512)  # recieve request from client
-        print(f'connection from {addr}')
-        print(f'recieved data: {data}')
-        response = create_response(data)
+    dns_server = Server()
+
+    server_socket = socket(AF_INET, SOCK_DGRAM)
+    server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    server_socket.bind(('127.0.0.1', 8000))
+    print('Server is up')
+
+    try:
+        while True:
+            data, addr = server_socket.recvfrom(512)
+            response_data = dns_server.parse_query(data)
+            if response_data:
+                server_socket.sendto(response_data, addr)
+
+    except KeyboardInterrupt:
+        print('Work ended')
+        dns_server.save_cache()
+        print('Cache saved')
+        server_socket.close()
 
 
 if __name__ == '__main__':
