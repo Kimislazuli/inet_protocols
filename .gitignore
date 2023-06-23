@@ -134,3 +134,6 @@ dmypy.json
 /.idea/vcs.xml
 /misc.xml
 /.idea/misc.xml
+/smtp_client/config.cfg
+/smtp_client/text.txt
+/vk_api/token.properties
