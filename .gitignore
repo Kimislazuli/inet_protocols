@@ -137,3 +137,4 @@ dmypy.json
 /smtp_client/config.cfg
 /smtp_client/text.txt
 /vk_api/token.properties
+/smtp_client/attachments/
