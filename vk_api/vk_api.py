@@ -31,8 +31,7 @@ def request_maker(method: str, params: str, access_token: str) -> str:
            access_token + '&v=' + API_VER
 
 
-def get_user_id(target_user: str) -> int:
-
+def get_user_id(target_user: str, access_token: str) -> int:
     with requests.get(request_maker('users.get', 'user_ids=' + target_user, access_token)) as response:
         data = response.json()
         if 'response' in data:
@@ -40,7 +39,7 @@ def get_user_id(target_user: str) -> int:
 
 
 def get_user_friends(target_user: str, access_token: str) -> set[str]:
-    user_id = get_user_id(target_user)
+    user_id = get_user_id(target_user, access_token)
     friends_set = set()
     with requests.get(request_maker(
             'friends.get',
@@ -56,7 +55,7 @@ def get_user_friends(target_user: str, access_token: str) -> set[str]:
     return friends_set
 
 
-if __name__ == '__main__':
+def main():
     args = Args()
 
     configs = Properties()
@@ -69,3 +68,8 @@ if __name__ == '__main__':
 
     for friend in friends:
         print(friend)
+    print(len(friends))
+
+
+if __name__ == '__main__':
+    main()
