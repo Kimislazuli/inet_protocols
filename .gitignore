@@ -127,6 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
 /.idea/inet_protocols.iml
 /.idea/modules.xml
 /.idea/inspectionProfiles/profiles_settings.xml
@@ -138,3 +139,4 @@ dmypy.json
 /smtp_client/text.txt
 /vk_api/token.properties
 /smtp_client/attachments/
+/.idea/workspace.xml
