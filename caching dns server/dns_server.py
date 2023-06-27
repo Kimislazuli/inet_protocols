@@ -91,7 +91,7 @@ def main():
 
     server_socket = socket(AF_INET, SOCK_DGRAM)
     server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    server_socket.bind(('127.0.0.1', 8000))
+    server_socket.bind(('127.0.0.1', 53))
     print('Server is up')
 
     try:
